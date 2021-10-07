@@ -39,7 +39,7 @@ from werkzeug.security import generate_password_hash
 
 from airflow.www.fab_security.manager import BaseSecurityManager
 
-log = logging.getLogger(__name__)
+log = logging.getLogger()
 
 
 class SecurityManager(BaseSecurityManager):
@@ -249,19 +249,26 @@ class SecurityManager(BaseSecurityManager):
                 self.get_session.rollback()
         return role
 
-    def update_role(self, role_id, name: str) -> Optional[Role]:
+    def update_role(self, role_id, name: str) -> bool:
+        """
+        Update name of role with role_id to name parameter.
+
+        :param role_id: id of the role to change name of
+        :param name: name to update for the role_id
+
+        """
         role = self.get_session.query(self.role_model).get(role_id)
-        if not role:
-            return
-        try:
-            role.name = name
-            self.get_session.merge(role)
-            self.get_session.commit()
-            log.info(c.LOGMSG_INF_SEC_UPD_ROLE.format(role))
-        except Exception as e:
-            log.error(c.LOGMSG_ERR_SEC_UPD_ROLE.format(str(e)))
-            self.get_session.rollback()
-            return
+        if role:
+            try:
+                role.name = name
+                self.get_session.merge(role)
+                self.get_session.commit()
+                log.info(c.LOGMSG_INF_SEC_UPD_ROLE.format(role))
+                return True
+            except Exception as e:
+                log.error(c.LOGMSG_ERR_SEC_UPD_ROLE.format(str(e)))
+                self.get_session.rollback()
+        return False
 
     def find_role(self, name):
         return self.get_session.query(self.role_model).filter_by(name=name).one_or_none()
