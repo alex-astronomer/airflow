@@ -39,7 +39,7 @@ from werkzeug.security import generate_password_hash
 
 from airflow.www.fab_security.manager import BaseSecurityManager
 
-log = logging.getLogger()
+log = logging.getLogger(__name__)
 
 
 class SecurityManager(BaseSecurityManager):
