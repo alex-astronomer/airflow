@@ -63,6 +63,93 @@ You can also use a plain value or variable to call a TaskFlow function - for exa
 
 If you want to learn more about using TaskFlow, you should consult :doc:`the TaskFlow tutorial </tutorial_taskflow_api>`.
 
+.. _concepts/taskflow:syntax_comparison:
+
+Syntax Comparison - Taskflow vs. Traditional
+--------------------------------------------
+
+One concept that is important to understand about the Taskflow API is the use of ``XComArg`` and implicit dependencies that might not be intuitive at first glance.  Consider the following code block::
+
+  @dag(
+      'xcom_testing',
+      start_date=datetime(2021, 1, 1),
+      max_active_runs=10,
+      schedule_interval='0 0 * * *',
+      default_args=default_args,
+      catchup=False,
+      render_template_as_native_obj=True
+  )
+  def xcom_testing_dag():
+      @task
+      def set_const():
+          return 10
+
+      @task
+      def print_const1(some_const):
+          print(some_const)
+
+      @task
+      def print_const2(some_const):
+          print(some_const)
+
+      const = set_const()
+      print_const1(const) >> print_const2(const)
+
+The graph created from the above codeblock looks like this::
+
+                ┌────────────┐
+       ┌───────►│print_const1├─────────┐
+       │        └────────────┘         │
+       │                               ▼
+  ┌────┴────┐                    ┌────────────┐
+  │set_const├───────────────────►│print_const2│
+  └─────────┘                    └────────────┘
+
+We can clearly see that there is a dependency between ``print_const1`` and ``print_const2``, because of the bitshift operator that connects the two tasks.  But, it might be confusing to some users that there are dependencies created between ``set_const`` and each of the ``print_const`` tasks.
+
+The reason why this happens is because the purpose of the expression ``print_const1(set_const)``, from the code block above, is two-fold. Not only does this operation create XCom pass from ``set_const`` and its return value to ``print_const1``, it also creates the dependency that must exist between these two operators.
+
+We know logically that in order for ``set_const`` to pass its result to ``print_const``, ``set_const`` must have executed first, and Airflow is intelligent enough to know this implicit dependency.  Through the Taskflow API syntax and the supporting backend code that is described in this document, Airflow will create that dependency automatically.
+
+More succinctly, the most important thing to note from the explanation above is that ``print_const1(set_const)`` sets the return value of ``set_const`` to be passed as an XCom to ``print_const1``, and also sets the dependency between the two tasks (equivalent to ``set_const >> print_xcom1``), in the same operation.  In order to access the return value that was passed as XCom, we make a parameter for the task function that is receiving the XCom, and give it an arbitrary name to be referenced within that function.
+
+If we're comparing this to the old style of Airflow syntax (pre-taskflow), the equivalent would be as such::
+
+  ...
+  def set_const():
+    return 10
+
+  def xcom_print(ti):
+      xcom = ti.xcom_pull(key="return_value", task_ids="set_const")
+      print(xcom)
+
+  with DAG(
+      'xcom_testing_original',
+      start_date=datetime(2021, 1, 1),
+      max_active_runs=10,
+      schedule_interval='0 0 * * *',
+      default_args=default_args,
+      catchup=False,
+      render_template_as_native_obj=True
+  ) as dag:
+      task_1 = PythonOperator(
+          task_id="set_const",
+          python_callable=set_const
+      )
+
+      task_2 = PythonOperator(
+          task_id="print_const1",
+          python_callable=xcom_print
+      )
+
+      task_3 = PythonOperator(
+          task_id="print_const2",
+          python_callable=xcom_print
+      )
+
+      task_1 >> task_2
+      task_1 >> task_3
+      task_2 >> task_3
 
 History
 -------

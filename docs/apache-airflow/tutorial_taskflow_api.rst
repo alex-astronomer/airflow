@@ -92,7 +92,9 @@ That's it, we are done!
 We have invoked the Extract task, obtained the order data from there and sent it over to
 the Transform task for summarization, and then invoked the Load task with the summarized data.
 The dependencies between the tasks and the passing of data between these tasks which could be
-running on different workers on different nodes on the network is all handled by Airflow.
+running on different workers on different nodes on the network is all handled by Airflow.  For more
+information about the dependencies created between these tasks given the structure of the DAG above, see
+:ref:`Taskflow Syntax Comparison <concepts/taskflow:syntax_comparison>`.
 
 Now to actually enable this to be run as a DAG, we invoke the python function
 ``tutorial_taskflow_api_etl`` set up using the ``@dag`` decorator earlier, as shown below.
