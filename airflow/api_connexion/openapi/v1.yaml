@@ -1531,6 +1531,9 @@ paths:
           $ref: '#/components/responses/NotFound'
 
   /roles:
+    summary: >
+      For more information about Access Control,
+      see https://airflow.apache.org/docs/apache-airflow/stable/security/access-control.html
     get:
       summary: List roles
       description: |
@@ -1615,7 +1618,9 @@ paths:
     patch:
       summary: Update a role
       description: |
-        Update a role.
+        Update a role.  Note that this endpoint allows only for append-only changes to a permission list for
+        a role and does not allow deleting permissions.
+        from the role.
 
         *New in version 2.1.0*
       x-openapi-router-controller: airflow.api_connexion.endpoints.role_and_permission_endpoint
@@ -2906,6 +2911,12 @@ components:
       properties:
         name:
           type: string
+          enum:
+            - can_read
+            - can_edit
+            - can_delete
+            - can_create
+            - menu_access
           description: The name of the permission "action"
           nullable: false
 
@@ -2933,7 +2944,10 @@ components:
       properties:
         name:
           type: string
-          description: The name of the resource
+          description: >
+            The name of the resource. To find available resources, query metadata DB
+            `select * from ab_view_menu;`.  Examples of default resources are `Connections`, `Permissions`,
+            and `DAGs`.  Dynamic resources include DAGs, which can have actions assigned to them.
           nullable: false
 
     ActionResource:
