@@ -170,6 +170,7 @@ class KubernetesPodOperator(BaseOperator):
         'labels',
         'config_file',
         'pod_template_file',
+        'resources',
     )
 
     # fmt: off
@@ -258,7 +259,7 @@ class KubernetesPodOperator(BaseOperator):
             self.node_selector = {}
         self.annotations = annotations or {}
         self.affinity = convert_affinity(affinity) if affinity else {}
-        self.k8s_resources = convert_resources(resources) if resources else {}
+        self.resources = resources
         self.config_file = config_file
         self.image_pull_secrets = convert_image_pull_secrets(image_pull_secrets) if image_pull_secrets else []
         self.service_account_name = service_account_name
@@ -434,6 +435,7 @@ class KubernetesPodOperator(BaseOperator):
 
         """
         self.log.debug("Creating pod for KubernetesPodOperator task %s", self.task_id)
+        k8s_resources = convert_resources(self.resources) if self.resources else {}
         if self.pod_template_file:
             self.log.debug("Pod template file found, will parse for base pod")
             pod_template = pod_generator.PodGenerator.deserialize_model_file(self.pod_template_file)
@@ -465,7 +467,7 @@ class KubernetesPodOperator(BaseOperator):
                         command=self.cmds,
                         ports=self.ports,
                         image_pull_policy=self.image_pull_policy,
-                        resources=self.k8s_resources,
+                        resources=k8s_resources,
                         volume_mounts=self.volume_mounts,
                         args=self.arguments,
                         env=self.env_vars,
